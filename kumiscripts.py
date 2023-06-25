@@ -54,14 +54,12 @@ def prompt_user(script_directory):
 
 def check_scripts_folder(script_directory):
     if not os.path.exists(script_directory):
-        print(f"The scripts folder '{script_directory}' does not exist.")
-        return False
-    else:
-        return True
+        os.makedirs(script_directory)
+        print(f"The scripts folder '{script_directory}' was created.")
 
-scripts_directory = './scripts'
+scripts_directory = 'scripts'
 website_url = 'https://kumina.wtf/scripts'
 
-if check_scripts_folder(scripts_directory):
-    check_and_install_scripts(scripts_directory, website_url)
-    prompt_user(scripts_directory)
+check_scripts_folder(scripts_directory)
+check_and_install_scripts(scripts_directory, website_url)
+prompt_user(scripts_directory)
