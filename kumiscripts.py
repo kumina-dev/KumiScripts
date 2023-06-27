@@ -3,8 +3,7 @@ import sys
 import requests
 import subprocess
 import json
-from tqdm import tqdm
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QListWidget, QListWidgetItem, QTextEdit
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QListWidget, QListWidgetItem, QTextEdit, QMessageBox
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 
 class ScriptRunner(QThread):
@@ -55,9 +54,14 @@ class ScriptInstallerGUI(QMainWindow):
         add_website_button.clicked.connect(self.add_website)
         button_layout.addWidget(add_website_button)
 
+        # Remove Website Button
+        remove_website_button = QPushButton("Remove Website")
+        remove_website_button.clicked.connect(self.remove_website)
+        button_layout.addWidget(remove_website_button)
+
         # Website List
         self.website_list_widget = QListWidget()
-        self.website_list_widget.itemDoubleClicked.connect(self.remove_website)
+        self.website_list_widget.itemDoubleClicked.connect(self.update_script_list)  # Connect the signal
         website_layout.addWidget(self.website_list_widget)
 
         # Script List
@@ -98,6 +102,7 @@ class ScriptInstallerGUI(QMainWindow):
                 self.website_list = settings.get('websites', [])
         
         self.update_website_list()
+        self.update_script_list()  # Add this line to update the script list initially
 
     def save_settings(self):
         config_file = 'config.json'
@@ -109,19 +114,16 @@ class ScriptInstallerGUI(QMainWindow):
             json.dump(settings, file)
     
     def add_website(self):
-        website_url = self.website_input.text().strip()
+        website_url = self.website_input.text()
         if website_url:
-            self.website_list.append(website_url)
+            item = QListWidgetItem(website_url)
+            self.website_list_widget.addItem(item)
             self.website_input.clear()
-            self.update_website_list()
-            self.update_script_list()
-            self.save_settings()
 
-    def remove_website(self, item):
-        selected_website = item.text()
-        self.website_list.remove(selected_website)
-        self.update_website_list()
-        self.save_settings()
+    def remove_website(self):
+        selected_website_items = self.website_list_widget.selectedItems()
+        for item in selected_website_items:
+            self.website_list_widget.takeItem(self.website_list_widget.row(item))
 
     def update_website_list(self):
         self.website_list_widget.clear()
@@ -130,7 +132,13 @@ class ScriptInstallerGUI(QMainWindow):
             self.website_list_widget.addItem(item)
 
     def install_scripts(self):
-        selected_website = self.website_list_widget.currentItem().text()
+        selected_website_item = self.website_list_widget.currentItem()
+        if selected_website_item is None:
+            print("No website selected.")
+            return
+
+        selected_website = selected_website_item.text()  # Retrieve website URL from the item's text
+
         selected_scripts = []
         for index in range(self.script_list_widget.count()):
             item = self.script_list_widget.item(index)
@@ -145,11 +153,8 @@ class ScriptInstallerGUI(QMainWindow):
             response = requests.get(scripts_url)
             response.raise_for_status()
             script_data = response.json()
-        except requests.exceptions.HTTPError as e:
+        except requests.exceptions.RequestException as e:
             print(f"Error occurred while retrieving script information: {e}")
-            return
-        except ValueError as e:
-            print(f"Error occurred while parsing script data: {e}")
             return
         
         scripts_to_install = script_data.get('scripts', [])
@@ -172,34 +177,37 @@ class ScriptInstallerGUI(QMainWindow):
     
     def update_script_list(self):
         self.script_list_widget.clear()
+
         selected_website_item = self.website_list_widget.currentItem()
         if selected_website_item is None:
             return
 
-        selected_website = selected_website_item.text()
+        selected_website = selected_website_item.text()  # Retrieve website URL from the item's text
         scripts_url = f"{selected_website}/scripts.json"
         try:
             response = requests.get(scripts_url)
             response.raise_for_status()
             script_data = response.json()
-        except requests.exceptions.HTTPError as e:
+        except requests.exceptions.RequestException as e:
             print(f"Error occurred while retrieving script information: {e}")
-            return
-        except ValueError as e:
-            print(f"Error occurred while parsing script data: {e}")
+            QMessageBox.warning(self, "Error", "Error occurred while retrieving script information.")
             return
 
         scripts_to_install = script_data.get('scripts', [])
         if not scripts_to_install:
-            print("No scripts found to install.")
+            QMessageBox.information(self, "No Scripts", "No scripts found to install.")
             return
 
+        self.script_list_widget.clear()
         for script in scripts_to_install:
             script_name = script['name']
             item = QListWidgetItem(script_name)
             item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
             item.setCheckState(Qt.Unchecked)
             self.script_list_widget.addItem(item)
+
+    def clear_script_list(self):
+        self.script_list_widget.clear()
     
     def run_script(self):
         selected_item = self.script_list_widget.currentItem()
@@ -214,52 +222,26 @@ class ScriptInstallerGUI(QMainWindow):
         self.script_runner.start()
     
     def display_script_output(self, output):
-        self.cmd_output.setPlainText(output)
+        self.cmd_output.append(output)
 
-def check_and_install_scripts(script_directory, website_url):
-    scripts_url = f"{website_url}/scripts.json"
-    try:
-        response = requests.get(scripts_url)
-        response.raise_for_status()
-        script_data = response.json()
-    except requests.exceptions.HTTPError as e:
-        print(f"Error occurred while retrieving script information: {e}")
-        return
-    except ValueError as e:
-        print(f"Error occurred while parsing script data: {e}")
-        return
-    
-    scripts_to_install = script_data.get('scripts', [])
-    if not scripts_to_install:
-        print("No scripts found to install.")
-        return
-    
-    print("Installing missing scripts:")
-    for script in tqdm(scripts_to_install):
-        script_name = script['name']
-        script_url = script['url']
-        script_path = os.path.join(script_directory, script_name)
-        if not os.path.isfile(script_path):
-            install_script(script_name, script_directory, script_url)
-    
-    print("Installation completed.")
+    def closeEvent(self, event):
+        self.save_settings()
+        super().closeEvent(event)
 
-def install_script(script_name, script_directory, script_url):
-    script_path = os.path.join(script_directory, script_name)
+def install_script(script_name, scripts_directory, script_url):
+    script_path = os.path.join(scripts_directory, script_name)
 
-    try:
-        response = requests.get(script_url)
-        response.raise_for_status()
-    except requests.exceptions.HTTPError as e:
-        print(f"Error occurred while downloading script '{script_name}': {e}")
-        return
+    print(f"Downloading script '{script_name}'...")
+    response = requests.get(script_url)
+    response.raise_for_status()
     
     with open(script_path, 'wb') as file:
         file.write(response.content)
+    
     print(f"Script '{script_name}' installed successfully.")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = ScriptInstallerGUI()
-    window.show()
-    sys.exit(app.exec_())
+    gui = ScriptInstallerGUI()
+    gui.show()
+    sys.exit(app.exec())
