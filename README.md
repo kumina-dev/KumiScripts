@@ -2,14 +2,6 @@
 
 KumiScripts is a script management tool that allows you to install and run scripts from a remote server. It provides a convenient way to organize and execute various scripts for your projects.
 
-## Installation
-
-1. Clone the repository:
-   git clone https://github.com/your-username/kumi-scripts.git
-
-2. Navigate to the project directory:
-   cd kumi-scripts
-
 ## Usage
 
 1. Modify the `scripts_directory` and `website_url` variables in the `kumiscripts.py` file to specify the directory where the scripts will be installed and the URL of the remote server hosting the scripts.
@@ -24,7 +16,3 @@ The script will retrieve the script information from the remote server and insta
 ## Contributing
 
 Contributions are welcome! If you have any suggestions, bug reports, or feature requests, please open an issue or submit a pull request.
-
-## License
-
-This project is licensed under the MIT License.
