@@ -1,7 +1,96 @@
 import os
+import sys
 import requests
 import subprocess
 from tqdm import tqdm
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QListWidget, QListWidgetItem, QTextEdit
+
+class ScriptInstallerGUI(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("KumiScripts")
+        self.resize(600, 400)
+
+        # Script settings
+        self.scripts_directory = './scripts'
+        self.website_url = 'https://kumina.wtf/scripts'
+        self.script_list = []
+
+        # Create and set central widget
+        central_widget = QWidget(self)
+        self.setCentralWidget(central_widget)
+
+        # Layouts
+        main_layout = QVBoxLayout(central_widget)
+        script_layout = QHBoxLayout()
+        button_layout = QHBoxLayout()
+        cmd_layout = QVBoxLayout()
+
+        # Script Input
+        self.script_input = QLineEdit()
+        script_layout.addWidget(QLabel("Website URL:"))
+        script_layout.addWidget(self.script_input)
+
+        # Install Button
+        install_button = QPushButton("Install Scripts")
+        install_button.clicked.connect(self.install_scripts)
+        button_layout.addWidget(install_button)
+
+        # Script List
+        self.script_list_widget = QListWidget()
+        self.script_list_widget.itemDoubleClicked.connect(self.remove_website)
+        script_layout.addWidget(self.script_list_widget)
+
+        # CMD Output
+        self.cmd_output = QTextEdit()
+        self.cmd_output.setReadOnly(True)
+        cmd_layout.addWidget(QLabel("CMD Output:"))
+        cmd_layout.addWidget(self.cmd_output)
+
+        # Main Layout
+        main_layout.addLayout(script_layout)
+        main_layout.addLayout(button_layout)
+        main_layout.addLayout(cmd_layout)
+
+        # Load script settings
+        self.load_settings()
+    
+    def load_settings(self):
+        # TODO: Load settings from a config file if available
+        pass
+
+    def save_settings(self):
+        # TODO: Save settings to a config file
+        pass
+
+    def install_scripts(self):
+        website_url = self.script_input.text().strip()
+        if website_url:
+            check_and_install_scripts(self.scripts_directory, website_url)
+            self.update_script_list()
+            self.script_input.clear()
+            self.save_settings()
+    
+    def update_script_list(self):
+        self.script_list_widget.clear()
+        self.script_list = os.listdir(self.scripts_directory)
+        for script in self.script_list:
+            item = QListWidgetItem(script)
+            self.script_list_widget.addItem(item)
+    
+    def remove_website(self, item):
+        selected_script = item.text()
+        script_path = os.path.join(self.scripts_directory, selected_script)
+        os.remove(script_path)
+        self.update_script_list()
+        self.save_settings()
+    
+    def run_script(self):
+        selected_script = self.script_list_widget.currentItem().text()
+        script_path = os.path.join(self.scripts_directory, selected_script)
+        process = subprocess.Popen(["python", script_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output, _ = process.communicate()
+        self.cmd_output.setPlainText(output.decode())
 
 def install_script(script_name, script_directory, script_url):
     script_path = os.path.join(script_directory, script_name)
@@ -45,32 +134,8 @@ def check_and_install_scripts(script_directory, website_url):
 
     print("Installation completed.")
 
-def run_script(scripts_directory):
-    script_files = os.listdir(scripts_directory)
-    if not script_files:
-        print("No scripts found in the directory.")
-        return
-    
-    print("Available scripts:")
-    for i, script_file in enumerate(script_files):
-        print(f"{i + 1}. {script_file}")
-
-    while True:
-        try:
-            script_choice = int(input("Enter the number of the script you want to run (or 0 to exit): "))
-            if script_choice == 0:
-                return
-            script_index = script_choice - 1
-            selected_script = script_files[script_index]
-            script_path = os.path.join(scripts_directory, selected_script)
-            subprocess.run(["python", script_path])
-        except ValueError:
-            print("Invalid input. Please enter a valid script number.")
-        except IndexError:
-            print("Invalid script number. Please try again.")
-
-scripts_directory = './scripts'
-website_url = 'https://kumina.wtf/scripts'
-
-check_and_install_scripts(scripts_directory, website_url)
-run_script(scripts_directory)
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    window = ScriptInstallerGUI()
+    window.show()
+    sys.exit(app.exec_())
