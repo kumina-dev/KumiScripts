@@ -4,7 +4,7 @@ KumiScripts is a script management tool that allows you to install and run scrip
 
 ## Information
 
-The installation, usage portions are added a little later when I have time to add them.
+The installation portion is added a little later when I have time to add it, maybe other are also added. It depends.
 
 ## Contributing
 
