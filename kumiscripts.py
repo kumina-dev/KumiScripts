@@ -2,6 +2,7 @@ import os
 import sys
 import requests
 import subprocess
+import json
 from tqdm import tqdm
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QListWidget, QListWidgetItem, QTextEdit
 
@@ -56,12 +57,21 @@ class ScriptInstallerGUI(QMainWindow):
         self.load_settings()
     
     def load_settings(self):
-        # TODO: Load settings from a config file if available
-        pass
+        config_file = 'config.json'
+        if os.path.isfile(config_file):
+            with open(config_file, 'r') as file:
+                settings = json.load(file)
+                self.scripts_directory = settings.get('scripts_directory', './scripts')
+                self.website_url = settings.get('website_url', 'https://kumina.wtf/scripts')
 
     def save_settings(self):
-        # TODO: Save settings to a config file
-        pass
+        config_file = 'config.json'
+        settings = {
+            'scripts_directory': self.scripts_directory,
+            'website_url': self.website_url
+        }
+        with open(config_file, 'w') as file:
+            json.dump(settings, file)
 
     def install_scripts(self):
         website_url = self.script_input.text().strip()
