@@ -124,6 +124,8 @@ class ScriptInstallerGUI(QMainWindow):
         selected_website_items = self.website_list_widget.selectedItems()
         for item in selected_website_items:
             self.website_list_widget.takeItem(self.website_list_widget.row(item))
+        
+        self.update_script_list()
 
     def update_website_list(self):
         self.website_list_widget.clear()
